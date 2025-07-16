@@ -18,40 +18,59 @@ jobs:
       ALLOWED_HOSTS: localhost,127.0.0.1
 
     steps:
-    - name: Checkout repo
+    - name: Code Checkout
       uses: actions/checkout@v3
 
-    - name: Set up Python
+    - name: Set up Python 3.10
       uses: actions/setup-python@v4
       with:
         python-version: '3.10'
 
-    - name: Install dependencies
+    - name: Create .env file
+      run: |
+        cat <<EOF > devsu-demo-devops-python/.env
+        DJANGO_SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY }}
+        DATABASE_NAME=db.sqlite3
+        DEBUG=${{ secrets.DEBUG }}
+        ALLOWED_HOSTS=${{ secrets.ALLOWED_HOSTS }}
+        EOF
+
+    - name: Install Dependencies
       run: |
         pip install -r devsu-demo-devops-python/requirements.txt
         pip install flake8 coverage
 
-    - name: Run database migrations
-      run: python devsu-demo-devops-python/manage.py migrate
+    - name: Run Migrations & Tests
+      working-directory: devsu-demo-devops-python
+      run: |
+        python manage.py migrate
+        # Ejecuta los tests y recoge cobertura
+        coverage run --source='.' manage.py test api
+        coverage xml -o coverage.xml
 
-    - name: Lint code with flake8
+    - name: Lint with flake8
       run: flake8 devsu-demo-devops-python/
 
-    - name: Run tests with coverage
-      run: |
-        coverage run devsu-demo-devops-python/manage.py test
-        coverage report
+    - name: Coverage Report
+      working-directory: devsu-demo-devops-python
+      run: coverage report -i
 
-    - name: Build Docker image
-      run: docker build -t devsu-app .
-
-    - name: Login to Docker Hub
-      if: github.ref == 'refs/heads/main'
-      run: echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
-
-    - name: Tag and Push image to Docker Hub
+    - name: Build & Push Docker Image
       if: github.ref == 'refs/heads/main'
       run: |
+        docker build -t devsu-app .
+        echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
         IMAGE=${{ secrets.DOCKERHUB_USERNAME }}/devsu-app:latest
         docker tag devsu-app $IMAGE
         docker push $IMAGE
+
+    - name: SonarCloud Scan
+      uses: SonarSource/sonarcloud-github-action@v2
+      with:
+        projectBaseDir: devsu-demo-devops-python
+        args: >
+          -Dsonar.organization=pablofloress2615
+          -Dsonar.projectKey=PabloFloress2615_devsu-devops
+          -Dsonar.python.coverage.reportPaths=coverage.xml
+      env:
+        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
