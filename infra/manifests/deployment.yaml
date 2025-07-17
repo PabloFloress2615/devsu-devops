@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: demo-devops
+  namespace: demo-devops
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: demo-devops
+  template:
+    metadata:
+      labels:
+        app: demo-devops
+    spec:
+      containers:
+      - name: web
+        image: pabloflores2615/devsu-app:latest
+        ports:
+        - containerPort: 8000
+        resources:
+          requests:
+            cpu: "0.1"
+            memory: "200Mi"
+          limits:
+            cpu: "0.1"
+            memory: "200Mi"
+        env:
+        - name: ALLOWED_HOSTS
+          value: "${ALLOWED_HOSTS}"
