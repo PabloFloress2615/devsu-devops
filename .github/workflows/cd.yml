@@ -1,0 +1,44 @@
+name: CD Pipeline
+
+on:
+  workflow_run:
+    workflows: ["CI Pipeline"]
+    types:
+      - completed
+
+jobs:
+  deploy:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repo
+      uses: actions/checkout@v3
+
+    - name: Set up gcloud CLI
+      uses: google-github-actions/setup-gcloud@v1
+      with:
+        version: 'latest'
+        project_id: devsu-devops-466116
+        service_account_key: ${{ secrets.GCP_SA_KEY }}
+        export_default_credentials: true
+
+    - name: Get GKE credentials
+      uses: google-github-actions/get-gke-credentials@v1
+      with:
+        cluster_name: gke-standard-cluster
+        location: us-central1-a
+        project_id: devsu-devops-466116
+
+    - name: Export ALLOWED_HOSTS
+      run: echo "ALLOWED_HOSTS=${{ secrets.ALLOWED_HOSTS }}" >> $GITHUB_ENV
+
+    - name: Render deployment.yaml
+      run: |
+        envsubst < manual_deployment/deployment.tpl.yaml > manual_deployment/deployment.yaml
+
+    - name: Deploy to Kubernetes
+      run: |
+        kubectl apply -f manual_deployment/deployment.yaml
+        kubectl apply -f manual_deployment/service.yaml
+        kubectl apply -f manual_deployment/hpa.yaml || echo "No HPA"
