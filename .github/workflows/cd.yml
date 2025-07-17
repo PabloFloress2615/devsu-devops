@@ -38,9 +38,9 @@ jobs:
 
     - name: Render deployment.yaml
       run: |
-        envsubst < manifest/deployment.tpl.yaml > manifest/deployment.yaml
+        envsubst < infra/manifest/deployment.tpl.yaml > infra/manifest/deployment.yaml
 
     - name: Deploy to Kubernetes
       run: |
-        kubectl apply -f manifest/deployment.yaml
-        kubectl apply -f manifest/service.yaml
+        kubectl apply -f infra/manifest/deployment.yaml
+        kubectl apply -f infra/manifest/service.yaml
