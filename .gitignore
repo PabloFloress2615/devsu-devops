@@ -2,3 +2,5 @@
 infra/terraform/google-cloud-sdk/
 infra/terraform/**/__pycache__/
 *.pyc
+infra/terraform/gke-gcloud-auth-plugin --version/
+infra/terraform/gke-gcloud-auth-plugin*/
