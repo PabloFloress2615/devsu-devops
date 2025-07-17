@@ -1,3 +1,4 @@
+# .github/workflows/cd.yml
 name: CD Pipeline
 
 on:
@@ -35,10 +36,9 @@ jobs:
 
     - name: Render deployment.yaml
       run: |
-        envsubst < manual_deployment/deployment.tpl.yaml > manual_deployment/deployment.yaml
+        envsubst < manifest/deployment.tpl.yaml > manifest/deployment.yaml
 
     - name: Deploy to Kubernetes
       run: |
-        kubectl apply -f manual_deployment/deployment.yaml
-        kubectl apply -f manual_deployment/service.yaml
-        kubectl apply -f manual_deployment/hpa.yaml || echo "No HPA"
+        kubectl apply -f manifest/deployment.yaml
+        kubectl apply -f manifest/service.yaml
