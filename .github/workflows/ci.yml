@@ -1,0 +1,66 @@
+# .github/workflows/ci.yml
+name: CI Pipeline
+
+on:
+  push:
+    branches: ['*']
+  pull_request:
+    branches: ['*']
+
+env:
+  DJANGO_SETTINGS_MODULE: demo.settings
+  DATABASE_NAME: db.sqlite3
+  ALLOWED_HOSTS: localhost,127.0.0.1
+
+jobs:
+  ci:
+    name: Build → Test → Lint → Coverage → Sonar
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Create .env file
+        run: |
+          cat <<EOF > devsu-demo-devops-python/.env
+          DJANGO_SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY }}
+          DATABASE_NAME=db.sqlite3
+          DEBUG=${{ secrets.DEBUG }}
+          ALLOWED_HOSTS=${{ secrets.ALLOWED_HOSTS }}
+          EOF
+
+      - name: Install dependencies
+        run: |
+          pip install -r devsu-demo-devops-python/requirements.txt
+          pip install flake8 coverage
+
+      - name: Run migrations & tests
+        working-directory: devsu-demo-devops-python
+        run: |
+          python manage.py migrate
+          coverage run --source='.' manage.py test api
+          coverage xml -o coverage.xml
+
+      - name: Lint with flake8
+        run: flake8 devsu-demo-devops-python/
+
+      - name: Coverage report
+        working-directory: devsu-demo-devops-python
+        run: coverage report -i
+
+      - name: SonarCloud scan
+        uses: SonarSource/sonarcloud-github-action@v2
+        with:
+          projectBaseDir: devsu-demo-devops-python
+          args: >
+            -Dsonar.organization=pablofloress2615
+            -Dsonar.projectKey=PabloFloress2615_devsu-devops
+            -Dsonar.python.coverage.reportPaths=coverage.xml
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
