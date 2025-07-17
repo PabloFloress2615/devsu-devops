@@ -7,11 +7,6 @@ on:
   pull_request:
     branches: ['*']
 
-env:
-  DJANGO_SETTINGS_MODULE: demo.settings
-  DATABASE_NAME: db.sqlite3
-  ALLOWED_HOSTS: localhost,127.0.0.1
-
 jobs:
   ci:
     name: Build → Test → Lint → Coverage → Sonar
