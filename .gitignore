@@ -1,0 +1,4 @@
+# No versionar SDK de GCP ni caches de Python
+infra/terraform/google-cloud-sdk/
+infra/terraform/**/__pycache__/
+*.pyc
