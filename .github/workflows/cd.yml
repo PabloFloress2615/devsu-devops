@@ -34,17 +34,16 @@ jobs:
 
       - name: Render deployment.yaml
         run: |
-          envsubst < manifests/deployment.tpl.yaml > manifests/deployment.yaml
+          envsubst < infra/manifests/deployment.tpl.yaml > infra/manifests/deployment.yaml
 
       - name: Deploy to Kubernetes
         run: |
-          kubectl apply -f manifests/configmaps/configmap.yaml
-          kubectl apply -f manifests/secrets/secret.yaml
-          kubectl apply -f manifests/deployment.yaml
-          kubectl apply -f manifests/service.yaml
-          kubectl apply -f manifests/hpa.yaml || echo "No HPA found, skipping..."
+          kubectl apply -f infra/manifests/configmaps/configmap.yaml
+          kubectl apply -f infra/manifests/secrets/secret.yaml
+          kubectl apply -f infra/manifests/deployment.yaml
+          kubectl apply -f infra/manifests/service.yaml
+          kubectl apply -f infra/manifests/hpa.yaml || echo "No HPA found, skipping..."
 
       - name: Check rollout status
         run: |
           kubectl rollout status deployment/demo-devops -n demo-devops
-          
