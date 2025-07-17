@@ -1,30 +1,45 @@
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: demo-devops
-  namespace: demo-devops
-spec:
-  replicas: 2
-  selector:
-    matchLabels:
-      app: demo-devops
-  template:
-    metadata:
-      labels:
-        app: demo-devops
-    spec:
-      containers:
-      - name: web
-        image: pabloflores2615/devsu-app:latest
-        ports:
-        - containerPort: 8000
-        resources:
-          requests:
-            cpu: "0.1"
-            memory: "200Mi"
-          limits:
-            cpu: "0.1"
-            memory: "200Mi"
-        env:
-        - name: ALLOWED_HOSTS
-          value: "${ALLOWED_HOSTS}"
+name: CD Pipeline
+
+on:
+  workflow_run:
+    workflows: ["CI Pipeline"]
+    types:
+      - completed
+
+jobs:
+  deploy:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Set up gcloud CLI
+        uses: google-github-actions/auth@v1
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up gcloud SDK
+        uses: google-github-actions/setup-gcloud@v1
+        with:
+          project_id: devsu-devops-466116
+
+      - name: Get GKE credentials
+        uses: google-github-actions/get-gke-credentials@v1
+        with:
+          cluster_name: gke-standard-cluster
+          location: us-central1-a
+          project_id: devsu-devops-466116
+
+      - name: Render deployment.yaml
+        run: |
+          envsubst < manifests/deployment.tpl.yaml > manifests/deployment.yaml
+
+      - name: Deploy to Kubernetes
+        run: |
+          kubectl apply -f manifests/configmaps/configmap.yaml
+          kubectl apply -f manifests/secrets/secret.yaml
+          kubectl apply -f manifests/deployment.yaml
+          kubectl apply -f manifests/service.yaml
+          kubectl apply -f manifests/hpa.yaml || echo "No HPA found, skipping..."

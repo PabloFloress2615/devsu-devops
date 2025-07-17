@@ -33,8 +33,13 @@ jobs:
         location: us-central1-a
         project_id: devsu-devops-466116
 
-    - name: Export ALLOWED_HOSTS
-      run: echo "ALLOWED_HOSTS=${{ secrets.ALLOWED_HOSTS }}" >> $GITHUB_ENV
+- name: Create Kubernetes Secret from GitHub Secrets
+    run: |
+      kubectl create secret generic demo-secrets \
+        --from-literal=DJANGO_SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY }} \
+        --from-literal=ALLOWED_HOSTS=${{ secrets.ALLOWED_HOSTS }} \
+        --from-literal=DEBUG=${{ secrets.DEBUG }} \
+        -n demo-devops --dry-run=client -o yaml | kubectl apply -f -
 
     - name: Render deployment.yaml
       run: |
