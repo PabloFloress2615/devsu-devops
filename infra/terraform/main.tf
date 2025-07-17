@@ -12,14 +12,22 @@ resource "google_container_node_pool" "primary" {
   location = var.zone
 
   autoscaling {
-    min_node_count = 0
-    max_node_count = 1
+    min_node_count = 1
+    max_node_count = 2
   }
 
   node_config {
-    machine_type = "e2-small"
+    machine_type   = "e2-small"
+    disk_type      = "pd-balanced"
+    disk_size_gb   = 100
+    image_type     = "COS_CONTAINERD"
+
     oauth_scopes = [
       "https://www.googleapis.com/auth/cloud-platform",
     ]
+
+    metadata = {
+      disable-legacy-endpoints = "true"
+    }
   }
 }
