@@ -4,5 +4,6 @@ metadata:
   name: demo-config
   namespace: demo-devops
 data:
-  ALLOWED_HOSTS: "{{ .Values.allowedHosts }}"
-  DEBUG: "{{ .Values.debug }}"
+  DEBUG: "${DEBUG}"
+  ALLOWED_HOSTS: "${ALLOWED_HOSTS}"
+  DATABASE_NAME: "db.sqlite3"

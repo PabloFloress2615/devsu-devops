@@ -12,38 +12,43 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v3
+    - name: Checkout repo
+      uses: actions/checkout@v3
 
-      - name: Set up gcloud CLI
-        uses: google-github-actions/auth@v1
-        with:
-          credentials_json: ${{ secrets.GCP_SA_KEY }}
+    - name: Authenticate & configure gcloud
+      uses: google-github-actions/auth@v1
+      with:
+        credentials_json: ${{ secrets.GCP_SA_KEY }}
 
-      - name: Set up gcloud SDK
-        uses: google-github-actions/setup-gcloud@v1
-        with:
-          project_id: devsu-devops-466116
+    - name: Set up gcloud CLI
+      uses: google-github-actions/setup-gcloud@v1
+      with:
+        project_id: devsu-devops-466116
 
-      - name: Get GKE credentials
-        uses: google-github-actions/get-gke-credentials@v1
-        with:
-          cluster_name: gke-standard-cluster
-          location: us-central1-a
-          project_id: devsu-devops-466116
+    - name: Get GKE credentials
+      uses: google-github-actions/get-gke-credentials@v1
+      with:
+        cluster_name: gke-standard-cluster
+        location: us-central1-a
+        project_id: devsu-devops-466116
 
-      - name: Render deployment.yaml
-        run: |
-          envsubst < infra/manifests/deployment.tpl.yaml > infra/manifests/deployment.yaml
+    - name: Export secrets as env vars
+      run: |
+        echo "DJANGO_SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY }}" >> $GITHUB_ENV
+        echo "DEBUG=${{ secrets.DEBUG }}" >> $GITHUB_ENV
+        echo "ALLOWED_HOSTS=${{ secrets.ALLOWED_HOSTS }}" >> $GITHUB_ENV
 
-      - name: Deploy to Kubernetes
-        run: |
-          kubectl apply -f infra/manifests/configmaps/configmap.yaml
-          kubectl apply -f infra/manifests/secrets/secret.yaml
-          kubectl apply -f infra/manifests/deployment.yaml
-          kubectl apply -f infra/manifests/service.yaml
-          kubectl apply -f infra/manifests/hpa.yaml || echo "No HPA found, skipping..."
+    - name: Render and apply Kubernetes infra/manifests
+      run: |
+        envsubst < infra/manifests/secrets/secret.tpl.yaml > infra/manifests/secrets/secret.yaml
+        envsubst < infra/manifests/configmaps/configmap.tpl.yaml > infra/manifests/configmaps/configmap.yaml
+        envsubst < infra/manifests/deployment.tpl.yaml > infra/manifests/deployment.yaml
 
-      - name: Check rollout status
-        run: |
-          kubectl rollout status deployment/demo-devops -n demo-devops
+        kubectl apply -f infra/manifests/secrets/secret.yaml
+        kubectl apply -f infra/manifests/configmaps/configmap.yaml
+        kubectl apply -f infra/manifests/deployment.yaml
+        kubectl apply -f infra/manifests/service.yaml
+        kubectl apply -f infra/manifests/hpa.yaml || echo "HPA not found, skipping"
+
+    - name: Rollout status
+      run: kubectl rollout status deployment/demo-devops -n demo-devops
