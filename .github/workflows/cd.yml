@@ -12,40 +12,39 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout repo
-      uses: actions/checkout@v3
+      - name: Checkout repo
+        uses: actions/checkout@v3
 
-    - name: Authenticate to Google Cloud
-      uses: google-github-actions/auth@v1
-      with:
-        credentials_json: ${{ secrets.GCP_SA_KEY }}
+      - name: Set up gcloud CLI
+        uses: google-github-actions/auth@v1
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
 
-    - name: Set up gcloud CLI
-      uses: google-github-actions/setup-gcloud@v1
-      with:
-        version: 'latest'
-        project_id: devsu-devops-466116
+      - name: Set up gcloud SDK
+        uses: google-github-actions/setup-gcloud@v1
+        with:
+          project_id: devsu-devops-466116
 
-    - name: Get GKE credentials
-      uses: google-github-actions/get-gke-credentials@v1
-      with:
-        cluster_name: gke-standard-cluster
-        location: us-central1-a
-        project_id: devsu-devops-466116
+      - name: Get GKE credentials
+        uses: google-github-actions/get-gke-credentials@v1
+        with:
+          cluster_name: gke-standard-cluster
+          location: us-central1-a
+          project_id: devsu-devops-466116
 
-- name: Create Kubernetes Secret from GitHub Secrets
-    run: |
-      kubectl create secret generic demo-secrets \
-        --from-literal=DJANGO_SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY }} \
-        --from-literal=ALLOWED_HOSTS=${{ secrets.ALLOWED_HOSTS }} \
-        --from-literal=DEBUG=${{ secrets.DEBUG }} \
-        -n demo-devops --dry-run=client -o yaml | kubectl apply -f -
+      - name: Render deployment.yaml
+        run: |
+          envsubst < manifests/deployment.tpl.yaml > manifests/deployment.yaml
 
-    - name: Render deployment.yaml
-      run: |
-        envsubst < infra/manifests/deployment.tpl.yaml > infra/manifests/deployment.yaml
+      - name: Deploy to Kubernetes
+        run: |
+          kubectl apply -f manifests/configmaps/configmap.yaml
+          kubectl apply -f manifests/secrets/secret.yaml
+          kubectl apply -f manifests/deployment.yaml
+          kubectl apply -f manifests/service.yaml
+          kubectl apply -f manifests/hpa.yaml || echo "No HPA found, skipping..."
 
-    - name: Deploy to Kubernetes
-      run: |
-        kubectl apply -f infra/manifests/deployment.yaml
-        kubectl apply -f infra/manifests/service.yaml
+      - name: Check rollout status
+        run: |
+          kubectl rollout status deployment/demo-devops -n demo-devops
+          
